@@ -99,6 +99,8 @@
 		}
 	}
 
+	// cheap to get ready before the page is shown: load the photo, draw it, hold it
+	Photos.preloadWhileHidden = true;
 	Photos.decks = {};
 	Photos.last = {};
 	Photos.info = { title: "", equations: [] };
