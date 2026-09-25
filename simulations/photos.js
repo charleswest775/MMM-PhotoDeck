@@ -22,14 +22,28 @@
 		return [Math.round((w - dw) / 2), Math.round((h - dh) / 2), dw, dh];
 	};
 
-	// Fisher–Yates, keeping `avoid` (the photo just shown) out of first place
-	const shuffle = (list, avoid, random = Math.random) => {
+	// Fisher–Yates, then no two neighbours from the same day (a burst of shots of one moment
+	// looks like the same photo twice), nor the photo just shown (`last`) or its day first
+	const shuffle = (list, last, random = Math.random) => {
 		const a = list.slice();
 		for (let i = a.length - 1; i > 0; i--) {
 			const j = Math.floor(random() * (i + 1));
 			[a[i], a[j]] = [a[j], a[i]];
 		}
-		if (a.length > 1 && avoid && a[0].name === avoid) a.push(a.shift());
+		const clash = (p, q) => Boolean(q) && (p.name === q.name || (Boolean(p.taken) && p.taken === q.taken));
+		for (let i = 0; i < a.length; i++) {
+			const prev = i ? a[i - 1] : last;
+			if (!clash(a[i], prev)) continue;
+			const j = a.findIndex((p, k) => k > i && !clash(p, prev));
+			if (j > 0) {
+				[a[i], a[j]] = [a[j], a[i]];
+				continue;
+			}
+			// none left that fits (near the end): move it back between two it doesn't clash with
+			const p = a[i];
+			const k = a.findIndex((q, k) => k < i && !clash(p, q) && !clash(p, k ? a[k - 1] : last));
+			if (k >= 0) a.splice(k, 0, ...a.splice(i, 1));
+		}
 		return a;
 	};
 
@@ -59,16 +73,23 @@
 			this.resting = true;
 		}
 
-		// the next photo of the shuffled deck; a fresh list and shuffle when it runs out
+		// the next photo of the shuffled deck; a fresh list and shuffle when it runs out.
+		// One fetch at a time: two sims asking at once (at start-up, a photo loading when the
+		// module is hidden and preloads the next) would each deal a whole deck onto it.
 		static async next (base) {
 			const deck = Photos.decks[base] = Photos.decks[base] || [];
 			if (!deck.length) {
-				const res = await fetch(base);
-				if (!res.ok) throw new Error(`photo list: HTTP ${res.status}`);
-				deck.push(...shuffle(await res.json(), Photos.last[base]));
+				Photos.dealing[base] = Photos.dealing[base] || fetch(base)
+					.then((res) => {
+						if (!res.ok) throw new Error(`photo list: HTTP ${res.status}`);
+						return res.json();
+					})
+					.then((list) => { deck.push(...shuffle(list, Photos.last[base])); })
+					.finally(() => { delete Photos.dealing[base]; });
+				await Photos.dealing[base];
 			}
 			const photo = deck.shift();
-			if (photo) Photos.last[base] = photo.name;
+			if (photo) Photos.last[base] = photo;
 			return photo;
 		}
 
@@ -103,6 +124,7 @@
 	Photos.preloadWhileHidden = true;
 	Photos.decks = {};
 	Photos.last = {};
+	Photos.dealing = {};
 	Photos.info = { title: "", equations: [] };
 	Photos.formatDate = formatDate;
 	Photos.fit = fit;

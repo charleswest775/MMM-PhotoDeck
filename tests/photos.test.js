@@ -5,7 +5,8 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { exifDate, listPhotos } = require("../photo-index.js");
-const { Photos: { formatDate, fit, shuffle } } = require("../simulations/photos.js");
+const { Photos } = require("../simulations/photos.js");
+const { formatDate, fit, shuffle } = Photos;
 
 // A minimal JPEG header whose EXIF holds DateTime in IFD0 and, optionally,
 // DateTimeOriginal in the Exif IFD, in either byte order.
@@ -74,14 +75,51 @@ test("fit: centred, whole photo visible, shape kept", () => {
 	assert.deepStrictEqual(fit(500, 500, 1000, 1000), [0, 0, 1000, 1000]);     // small: scaled up
 });
 
+// a seeded random() for repeatable shuffles
+const lehmer = (seed) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
 test("shuffle: a permutation, and never the last photo first", () => {
 	const list = ["a", "b", "c", "d", "e"].map((name) => ({ name }));
 	for (let seed = 1; seed < 200; seed++) {
-		let s = seed;
-		const random = () => ((s = (s * 16807) % 2147483647) / 2147483647);
-		const out = shuffle(list, "c", random);
+		const out = shuffle(list, { name: "c" }, lehmer(seed));
 		assert.deepStrictEqual(out.map((p) => p.name).sort(), ["a", "b", "c", "d", "e"]);
 		assert.notStrictEqual(out[0].name, "c");
 	}
-	assert.deepStrictEqual(shuffle([{ name: "a" }], "a"), [{ name: "a" }]);
+	assert.deepStrictEqual(shuffle([{ name: "a" }], { name: "a" }), [{ name: "a" }]);
+});
+
+test("shuffle: photos from the same day never side by side, nor after the last one's day", () => {
+	// like the library: a trip with a burst of photos a day, some photos undated
+	const list = [];
+	for (let d = 10; d < 16; d++) for (let k = 0; k < 6; k++) list.push({ name: `${d}-${k}`, taken: `2025-03-${d}` });
+	for (let k = 0; k < 60; k++) list.push({ name: `x${k}`, taken: k % 3 ? `2019-01-${10 + (k % 20)}` : null });
+	for (let seed = 1; seed < 200; seed++) {
+		const out = shuffle(list, { name: "12-0", taken: "2025-03-12" }, lehmer(seed));
+		assert.strictEqual(new Set(out.map((p) => p.name)).size, list.length);
+		assert.notStrictEqual(out[0].taken, "2025-03-12");
+		for (let i = 1; i < out.length; i++) {
+			if (out[i].taken) assert.notStrictEqual(out[i].taken, out[i - 1].taken, `seed ${seed}, at ${i}`);
+		}
+	}
+});
+
+test("next: callers at once share one deck, dealt once", async () => {
+	const names = ["a", "b", "c", "d", "e", "f"];
+	let fetches = 0;
+	globalThis.fetch = async () => {
+		fetches++;
+		await new Promise((r) => setTimeout(r, 10));
+		return { ok: true, json: async () => names.map((name) => ({ name, taken: null })) };
+	};
+	try {
+		const got = await Promise.all([Photos.next("/t/"), Photos.next("/t/"), Photos.next("/t/")]);
+		for (let i = 3; i < names.length; i++) got.push(await Photos.next("/t/"));
+		assert.strictEqual(fetches, 1);
+		assert.deepStrictEqual(got.map((p) => p.name).sort(), names); // each once
+		const last = got[got.length - 1].name;
+		assert.notStrictEqual((await Photos.next("/t/")).name, last); // the next deck
+		assert.strictEqual(fetches, 2);
+	} finally {
+		delete globalThis.fetch;
+	}
 });
