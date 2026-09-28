@@ -107,7 +107,7 @@
 	class Photos {
 		// photoSeconds: a new photo this often, its crossfade included (0: one per showing);
 		// photoFadeSeconds: how long the crossfade takes
-		constructor ({ photoUrl = "/MMM-ChaosTheory/photos/", width = 900, height = 900, photoSeconds = 5, photoFadeSeconds = 0.8 } = {}) {
+		constructor ({ photoUrl = "/MMM-PhotoDeck/photos/", width = 900, height = 900, photoSeconds = 5, photoFadeSeconds = 0.8 } = {}) {
 			this.base = photoUrl;
 			this.w = width;
 			this.h = height;
@@ -248,7 +248,7 @@
 	Photos.fit = fit;
 	Photos.shuffle = shuffle;
 
-	root.ChaosSimulations = root.ChaosSimulations || {};
-	root.ChaosSimulations.photos = Photos;
+	root.PhotoSimulations = root.PhotoSimulations || {};
+	root.PhotoSimulations.photos = Photos;
 	if (typeof module !== "undefined") module.exports = { Photos };
 })(typeof window !== "undefined" ? window : globalThis);

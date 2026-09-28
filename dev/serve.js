@@ -24,10 +24,10 @@ const send = (res, file) => fs.readFile(file, (err, data) => {
 
 http.createServer((req, res) => {
 	const url = decodeURIComponent(new URL(req.url, "http://x").pathname);
-	if (url === "/MMM-ChaosTheory/photos/") {
+	if (url === "/MMM-PhotoDeck/photos/") {
 		return res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify(listPhotos(photos)));
 	}
-	if (url.startsWith("/MMM-ChaosTheory/photos/")) return send(res, path.join(photos, path.basename(url)));
+	if (url.startsWith("/MMM-PhotoDeck/photos/")) return send(res, path.join(photos, path.basename(url)));
 	const file = path.join(root, path.normalize(url));
 	if (!file.startsWith(root)) return res.writeHead(403).end();
 	send(res, file);
