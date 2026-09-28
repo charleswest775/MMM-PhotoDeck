@@ -8,8 +8,8 @@ there).
 **The photos are private: never commit them to this public repo**, nor put them in a
 screenshot. Charles's curated originals live in `~/Pictures/Mirror` on the Mac;
 `mac/sync-mirror-photos.sh` in the setup repo resizes them (sips, 1600 px, EXIF kept) and rsyncs
-them to `~/mirror-photos` on the Pi. `screenshot.png` is still to be made, with shareable
-pictures.
+them to `~/mirror-photos` on the Pi. It has no screenshot and isn't on the
+modules.magicmirror.builders list, by Charles's choice (2026-09-28): photo modules are plentiful there.
 
 ## What exists (v1.0.0)
 

@@ -2,8 +2,6 @@
 
 A [MagicMirror²](https://magicmirror.builders/) module that shows your photos one at a time, each held still on a canvas with the date it was taken, crossfading to the next, all of them before any repeats, at next to no cost to a Raspberry Pi while a photo is held.
 
-![A photo held on the mirror, with the date it was taken under it](screenshot.png)
-
 **Photos.** Your own pictures, each held still with the date it was taken, the next one
 crossfading in every 5 s: four to a 20 s page. They're dealt from a shuffled deck, so every
 photo is shown once before any repeats.
