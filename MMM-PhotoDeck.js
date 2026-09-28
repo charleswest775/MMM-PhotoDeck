@@ -11,6 +11,7 @@ Module.register("MMM-PhotoDeck", {
 		width: 900,        // canvas size in CSS pixels
 		height: 900,
 		fps: 20,           // frame cap; lower = less CPU
+		photoFolder: "~/mirror-photos", // on the MagicMirror server; ~ is the home folder
 		showMath: true,    // equations and live numbers under the canvas
 		turns: null,       // e.g. { of: 3, at: 0 }: show only on every third showing, from the first,
 		                   // so modules sharing a page can take turns (see README)

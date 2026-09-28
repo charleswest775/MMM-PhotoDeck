@@ -1,7 +1,7 @@
 {
   "name": "mmm-photodeck",
   "version": "1.0.0",
-  "description": "MagicMirror² module: animated photo-theory simulations (Lorenz attractor, diverging pendulums, fractal basins, logistic map, symmetric icons, the three-body problem, chaotic billiards, rule 30), and pages of physics and mathematics: a Bohr-style atom and hydrogen's orbitals, a fractal zoom, sacred geometry, the planets' dance, Chladni figures, aperiodic and hyperbolic tilings, snow crystals, and tonight's sky.",
+  "description": "MagicMirror² module: your photos one at a time, each held still on a canvas with the date it was taken, crossfading to the next, all before any repeats; next to no CPU on a Raspberry Pi while a photo is held.",
   "main": "MMM-PhotoDeck.js",
   "scripts": {
     "test": "node --test"
@@ -12,7 +12,8 @@
     "slideshow",
     "photo frame",
     "crossfade",
-    "EXIF"
+    "EXIF",
+    "raspberry pi"
   ],
   "repository": {
     "type": "git",

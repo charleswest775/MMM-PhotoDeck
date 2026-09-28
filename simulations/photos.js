@@ -4,8 +4,10 @@
  * rests), so it gives the CPU the gap the old empty page did, without an empty screen.
  * A crossfade is a full redraw while it lasts, so it's quick, and it only redraws where
  * either photo is; the next photo is loaded and laid out while the last one is held.
- * Photos come from node_helper.js (see photo-index.js), resized beforehand by the sync
- * script; they're shuffled and each is shown once before any repeats.
+ * Photos come from node_helper.js (see photo-index.js), resized beforehand; they're
+ * shuffled and each is shown once before any repeats. `photoFolder` picks the folder: the
+ * default's at /MMM-PhotoDeck/photos/, any other at /MMM-PhotoDeck/folders/<its key>/, which
+ * the helper serves only for folders named in MagicMirror's config.
  */
 (function (root) {
 	const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -19,6 +21,20 @@
 	const CAPTION = 50; // px under the photo for its date
 	const POLL = 0.5;   // s: how often the module looks in on a resting sim
 	const RECENT = 10;  // photos dealt lately that a new deck keeps back: about two showings' worth
+	const DEFAULT_FOLDER = "~/mirror-photos";
+
+	// A photoFolder's name in URLs: FNV-1a of the folder as written in the config, in hex. Not a
+	// path, so the browser can only name a folder the helper already knows from the config.
+	const folderKey = (folder) => {
+		let h = 0x811c9dc5;
+		for (let i = 0; i < folder.length; i++) h = Math.imul(h ^ folder.charCodeAt(i), 0x01000193);
+		return (h >>> 0).toString(16).padStart(8, "0");
+	};
+
+	// where the photo list is, for a photoFolder
+	const folderUrl = (folder) => (!folder || folder === DEFAULT_FOLDER
+		? "/MMM-PhotoDeck/photos/"
+		: `/MMM-PhotoDeck/folders/${folderKey(folder)}/`);
 
 	// the largest rectangle with the image's shape that fits in w × h, centred
 	const fit = (iw, ih, w, h) => {
@@ -106,8 +122,9 @@
 
 	class Photos {
 		// photoSeconds: a new photo this often, its crossfade included (0: one per showing);
-		// photoFadeSeconds: how long the crossfade takes
-		constructor ({ photoUrl = "/MMM-PhotoDeck/photos/", width = 900, height = 900, photoSeconds = 5, photoFadeSeconds = 0.8 } = {}) {
+		// photoFadeSeconds: how long the crossfade takes; photoFolder: where the photos are
+		// (photoUrl: the list's URL itself, for tests)
+		constructor ({ photoFolder, photoUrl = folderUrl(photoFolder), width = 900, height = 900, photoSeconds = 5, photoFadeSeconds = 0.8 } = {}) {
 			this.base = photoUrl;
 			this.w = width;
 			this.h = height;
@@ -138,7 +155,7 @@
 		// meanwhile: then the photo goes back on the deck.
 		async load (tries = 3) {
 			const photo = await Photos.next(this.base);
-			if (!photo) throw new Error(`No photos in the mirror's photo folder (${this.base})`);
+			if (!photo) throw new Error("No photos in the photo folder");
 			const img = new Image();
 			img.src = this.base + encodeURIComponent(photo.name);
 			try {
@@ -247,6 +264,9 @@
 	Photos.formatDate = formatDate;
 	Photos.fit = fit;
 	Photos.shuffle = shuffle;
+	Photos.folderKey = folderKey;
+	Photos.folderUrl = folderUrl;
+	Photos.DEFAULT_FOLDER = DEFAULT_FOLDER;
 
 	root.PhotoSimulations = root.PhotoSimulations || {};
 	root.PhotoSimulations.photos = Photos;

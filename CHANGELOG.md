@@ -3,4 +3,4 @@
 ## 1.0.0 (2026-09-28)
 
 First release on its own: split out of [MMM-ChaosTheory](https://github.com/charleswest775/MMM-ChaosTheory),
-where it was a page, with its history. New: `turns`, so modules sharing a page can take turns.
+where it was a page, with its history. New: `turns`, so modules sharing a page can take turns, and `photoFolder`, so each instance can show its own folder.

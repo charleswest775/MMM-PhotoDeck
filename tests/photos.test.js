@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { exifDate, listPhotos } = require("../photo-index.js");
+const { exifDate, listPhotos, resolveFolder, configuredFolders } = require("../photo-index.js");
 const { Photos } = require("../simulations/photos.js");
 const { formatDate, fit, shuffle } = Photos;
 
@@ -352,5 +352,101 @@ test("carousel: photoSeconds 0 holds one photo per showing", async () => {
 		assert.strictEqual(Photos.decks["/one/"].length, 1, "the next photo left on the deck");
 	} finally {
 		b.restore();
+	}
+});
+
+test("photoFolder: the default's list at photos/, any other's at folders/<key>/", () => {
+	assert.strictEqual(Photos.folderUrl(undefined), "/MMM-PhotoDeck/photos/");
+	assert.strictEqual(Photos.folderUrl("~/mirror-photos"), "/MMM-PhotoDeck/photos/");
+	assert.match(Photos.folderUrl("/srv/pictures"), /^\/MMM-PhotoDeck\/folders\/[0-9a-f]{8}\/$/);
+	assert.notStrictEqual(Photos.folderKey("/srv/pictures"), Photos.folderKey("/srv/pictures2"));
+	assert.strictEqual(Photos.folderKey(""), "811c9dc5"); // FNV-1a's offset basis
+	assert.strictEqual(Photos.folderKey("a"), "e40c292c"); // FNV-1a 32 of "a"
+	assert.strictEqual(new Photos({ photoFolder: "/srv/pictures" }).base, Photos.folderUrl("/srv/pictures"));
+	assert.strictEqual(new Photos({}).base, "/MMM-PhotoDeck/photos/");
+});
+
+test("photoFolder: ~ is the home folder; MIRROR_PHOTOS overrides only the default", () => {
+	const home = "/home/pi";
+	assert.strictEqual(resolveFolder(undefined, {}, home), "/home/pi/mirror-photos");
+	assert.strictEqual(resolveFolder("~/mirror-photos", {}, home), "/home/pi/mirror-photos");
+	assert.strictEqual(resolveFolder(undefined, { MIRROR_PHOTOS: "/data/p" }, home), "/data/p");
+	assert.strictEqual(resolveFolder("~/mirror-photos", { MIRROR_PHOTOS: "/data/p" }, home), "/data/p");
+	assert.strictEqual(resolveFolder("~/Family", { MIRROR_PHOTOS: "/data/p" }, home), "/home/pi/Family");
+	assert.strictEqual(resolveFolder("~", {}, home), "/home/pi");
+	assert.strictEqual(resolveFolder("/srv/pictures/", {}, home), "/srv/pictures");
+	assert.strictEqual(resolveFolder("~other/x", {}, home), path.resolve("~other/x")); // only a leading ~/
+});
+
+test("photoFolder: only the folders the config names, besides the default", () => {
+	const config = { modules: [
+		{ module: "clock" , config: { photoFolder: "/etc" } },
+		{ module: "MMM-PhotoDeck", config: {} },
+		{ module: "MMM-PhotoDeck", config: { photoFolder: "~/mirror-photos" } },
+		{ module: "MMM-PhotoDeck", config: { photoFolder: "~/Family" } },
+		{ module: "MMM-PhotoDeck", config: { photoFolder: "/srv/pictures" } },
+		{ module: "MMM-PhotoDeck", disabled: true, config: { photoFolder: "/root" } }
+	] };
+	const folders = configuredFolders(config, "MMM-PhotoDeck", {}, "/home/pi");
+	assert.deepStrictEqual([...folders], [
+		[Photos.folderKey("~/Family"), "/home/pi/Family"],
+		[Photos.folderKey("/srv/pictures"), "/srv/pictures"]
+	]);
+	assert.strictEqual(configuredFolders(undefined).size, 0);
+});
+
+// node_helper.js with MagicMirror's parts stubbed: its routes, as { "GET path": handler }
+function helper (config) {
+	const Module = require("node:module");
+	const load = Module._load;
+	Module._load = function (request, ...rest) {
+		if (request === "node_helper") return { create: (def) => def };
+		if (request === "logger") return { warn () {}, log () {} };
+		return load.call(this, request, ...rest);
+	};
+	const file = require.resolve("../node_helper.js");
+	delete require.cache[file];
+	try {
+		const h = Object.create(require(file));
+		const routes = {};
+		h.name = "MMM-PhotoDeck";
+		h.expressApp = { get: (route, fn) => { routes[route] = fn; } };
+		global.config = config;
+		h.start();
+		return routes;
+	} finally {
+		Module._load = load;
+		delete global.config;
+	}
+}
+
+// a request to one of the helper's routes: what it answered
+function ask (routes, route, params) {
+	const got = {};
+	const res = {
+		headersSent: false,
+		set () { return this; },
+		json (body) { got.json = body; },
+		sendStatus (code) { got.status = code; },
+		sendFile (file, opts, done) { got.file = file; }
+	};
+	routes[route]({ params }, res);
+	return got;
+}
+
+test("helper: serves configured folders by key, and nothing else", () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "photos-"));
+	fs.writeFileSync(path.join(dir, "a.jpg"), jpeg());
+	try {
+		const routes = helper({ modules: [{ module: "MMM-PhotoDeck", config: { photoFolder: dir } }] });
+		const key = Photos.folderKey(dir);
+		assert.deepStrictEqual(ask(routes, "/MMM-PhotoDeck/folders/:key/", { key }).json, [{ name: "a.jpg", taken: "2001-02-03" }]);
+		assert.strictEqual(ask(routes, "/MMM-PhotoDeck/folders/:key/:name", { key, name: "a.jpg" }).file, path.join(dir, "a.jpg"));
+		assert.strictEqual(ask(routes, "/MMM-PhotoDeck/folders/:key/:name", { key, name: "../../etc/passwd" }).file, path.join(dir, "passwd"));
+		assert.strictEqual(ask(routes, "/MMM-PhotoDeck/folders/:key/", { key: Photos.folderKey("/etc") }).status, 404);
+		assert.strictEqual(ask(routes, "/MMM-PhotoDeck/folders/:key/:name", { key: "..", name: "passwd" }).status, 404);
+		assert.ok(Array.isArray(ask(routes, "/MMM-PhotoDeck/photos/", {}).json), "the default folder, as before");
+	} finally {
+		fs.rmSync(dir, { recursive: true });
 	}
 });

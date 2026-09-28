@@ -1,5 +1,9 @@
-/* Server side of MMM-PhotoDeck: serves the photo page's pictures, and samples what the
- * mirror costs, for the stats panel.
+/* Server side of MMM-PhotoDeck: serves the photos, and samples what the mirror costs, for
+ * the stats panel.
+ * The photos: the default folder (MIRROR_PHOTOS, else ~/mirror-photos) at
+ * /MMM-PhotoDeck/photos/, and each other photoFolder named in MagicMirror's config at
+ * /MMM-PhotoDeck/folders/<key>/ (key: Photos.folderKey). The folders are read from the config
+ * here, on the server, before the browser asks for anything: nothing it sends picks a path.
  * Reads /proc and the thermal sensor (Linux only; elsewhere it reports what it can).
  * Samples only between STATS_START and STATS_STOP, i.e. while the module is shown.
  * With several instances (say one per MMM-pages page) one may start before the last has
@@ -7,13 +11,15 @@
  */
 const NodeHelper = require("node_helper");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
-const { listPhotos } = require("./photo-index.js");
+const { listPhotos, resolveFolder, configuredFolders } = require("./photo-index.js");
 
-// where mac/sync-mirror-photos.sh (in the mirror's setup repo) puts the resized photos
-const PHOTO_DIR = process.env.MIRROR_PHOTOS || path.join(os.homedir(), "mirror-photos");
+let Log = console;
+try { Log = require("logger"); } catch (e) { /* not in MagicMirror */ }
+
+// the default photoFolder, "~/mirror-photos", unless MIRROR_PHOTOS says otherwise
+const PHOTO_DIR = resolveFolder();
 
 let HZ = 100;
 // stderr ignored: by default execFileSync relays it to ours, and under pm2 that write fails
@@ -42,15 +48,28 @@ module.exports = NodeHelper.create({
 	start () {
 		this.timer = null;
 		this.watchers = new Set();
-		// the photos page: the list (re-read each time, so newly synced photos turn up), then
-		// each file. CORS on the list lets dev/preview.html on the Mac show the Pi's photos.
-		this.expressApp.get("/MMM-PhotoDeck/photos/", (req, res) => {
-			res.set("Access-Control-Allow-Origin", "*").json(listPhotos(PHOTO_DIR));
-		});
-		this.expressApp.get("/MMM-PhotoDeck/photos/:name", (req, res) => {
-			const name = path.basename(req.params.name); // nothing outside the folder
-			res.sendFile(path.join(PHOTO_DIR, name), { maxAge: "1d" }, (err) => err && !res.headersSent && res.sendStatus(404));
-		});
+		// A folder's list (re-read each time, so newly added photos turn up), then each file.
+		// CORS on the list lets dev/preview.html on another computer show the mirror's photos.
+		const serve = (route, folderOf) => {
+			this.expressApp.get(`${route}/`, (req, res) => {
+				const dir = folderOf(req);
+				if (!dir) return res.sendStatus(404);
+				res.set("Access-Control-Allow-Origin", "*").json(listPhotos(dir));
+			});
+			this.expressApp.get(`${route}/:name`, (req, res) => {
+				const dir = folderOf(req);
+				if (!dir) return res.sendStatus(404);
+				const name = path.basename(req.params.name); // nothing outside the folder
+				res.sendFile(path.join(dir, name), { maxAge: "1d" }, (err) => err && !res.headersSent && res.sendStatus(404));
+			});
+		};
+		// MagicMirror has read its config before it starts the helpers
+		this.folders = configuredFolders(global.config, this.name);
+		for (const dir of this.folders.values()) {
+			if (!fs.existsSync(dir)) Log.warn(`[${this.name}] photoFolder ${dir} not found`);
+		}
+		serve("/MMM-PhotoDeck/folders/:key", (req) => this.folders.get(req.params.key));
+		serve("/MMM-PhotoDeck/photos", () => PHOTO_DIR);
 	},
 
 	socketNotificationReceived (notification, payload) {

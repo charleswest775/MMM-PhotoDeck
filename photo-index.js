@@ -1,10 +1,12 @@
-/* The photo page's library: the pictures in a folder and when each was taken.
- * Used by node_helper.js, which serves the list and the files to the photos page.
- * The date comes from the JPEG's EXIF (DateTimeOriginal, else DateTime), which the
- * sync script's resized copies keep.
+/* The photo page's library: the pictures in a folder and when each was taken, and which
+ * folders there are. Used by node_helper.js, which serves the lists and the files.
+ * The date comes from the JPEG's EXIF (DateTimeOriginal, else DateTime), which resized
+ * copies keep if they're made with a tool that keeps it (sips does).
  */
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { Photos } = require("./simulations/photos.js");
 
 const IMAGE = /\.(jpe?g|png|webp)$/i;
 
@@ -69,4 +71,25 @@ function listPhotos (dir) {
 	});
 }
 
-module.exports = { exifDate, listPhotos, IMAGE };
+// A photoFolder as a path: a leading ~ is the home folder. The default, or none, is the
+// MIRROR_PHOTOS environment variable if it's set.
+function resolveFolder (folder, env = process.env, home = os.homedir()) {
+	if (!folder || folder === Photos.DEFAULT_FOLDER) folder = env.MIRROR_PHOTOS || Photos.DEFAULT_FOLDER;
+	if (folder === "~" || folder.startsWith("~/")) folder = path.join(home, folder.slice(1));
+	return path.resolve(folder);
+}
+
+// The folders other than the default that MagicMirror's config names, as key → path: the
+// only ones the helper serves besides the default. `config` is MagicMirror's (global.config).
+function configuredFolders (config, name = "MMM-PhotoDeck", env = process.env, home = os.homedir()) {
+	const folders = new Map();
+	for (const m of (config && config.modules) || []) {
+		const folder = m && m.module === name && !m.disabled && m.config && m.config.photoFolder;
+		if (typeof folder === "string" && folder && folder !== Photos.DEFAULT_FOLDER) {
+			folders.set(Photos.folderKey(folder), resolveFolder(folder, env, home));
+		}
+	}
+	return folders;
+}
+
+module.exports = { exifDate, listPhotos, resolveFolder, configuredFolders, IMAGE };
