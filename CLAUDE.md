@@ -48,7 +48,7 @@ modules.magicmirror.builders list, by Charles's choice (2026-09-28): photo modul
 The shell (`MMM-PhotoDeck.js`, the `node_helper.js` stats panel, `dev/preview.html`) is shared
 in spirit with the sibling modules split out at the same time (MMM-ChaosTheory, MMM-Atom,
 MMM-FractalZoom, MMM-Chladni, MMM-SacredGeometry, MMM-Tilings, MMM-PlanetsDance, MMM-NightSky,
-MMM-SnowCrystal, all in `~/dev/mirror-modules` or `~/dev`): a fix there probably belongs in the
+MMM-SnowCrystal, all in `~/dev/mirror-modules` or `~/dev`, MMM-StandardMap, MMM-ChaoticWaterwheel, MMM-DoubleSlit, MMM-Sandpile, MMM-Harmonograph): a fix there probably belongs in the
 siblings too.
 
 ## Measured cost on the Pi

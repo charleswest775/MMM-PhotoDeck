@@ -185,13 +185,27 @@ MagicMirror's suspend/resume order. Query options override the config, e.g.
 
 MIT
 
-Part of a family of MagicMirror² modules for a Raspberry Pi 3:
-[MMM-ChaosTheory](https://github.com/charleswest775/MMM-ChaosTheory),
+Part of a family of MagicMirror² modules. Chaos, one simulation each:
+[MMM-LorenzAttractor](https://github.com/charleswest775/MMM-LorenzAttractor),
+[MMM-DoublePendulum](https://github.com/charleswest775/MMM-DoublePendulum),
+[MMM-FractalBasins](https://github.com/charleswest775/MMM-FractalBasins),
+[MMM-LogisticMap](https://github.com/charleswest775/MMM-LogisticMap),
+[MMM-SymmetricIcons](https://github.com/charleswest775/MMM-SymmetricIcons),
+[MMM-ThreeBody](https://github.com/charleswest775/MMM-ThreeBody),
+[MMM-ChaoticBilliards](https://github.com/charleswest775/MMM-ChaoticBilliards),
+[MMM-Rule30](https://github.com/charleswest775/MMM-Rule30),
+[MMM-StandardMap](https://github.com/charleswest775/MMM-StandardMap),
+[MMM-ChaoticWaterwheel](https://github.com/charleswest775/MMM-ChaoticWaterwheel) and
+[MMM-Sandpile](https://github.com/charleswest775/MMM-Sandpile), or all eleven in
+one module, [MMM-ChaosTheory](https://github.com/charleswest775/MMM-ChaosTheory).
+And more pages of physics and mathematics:
 [MMM-Atom](https://github.com/charleswest775/MMM-Atom),
+[MMM-DoubleSlit](https://github.com/charleswest775/MMM-DoubleSlit),
 [MMM-FractalZoom](https://github.com/charleswest775/MMM-FractalZoom),
 [MMM-Chladni](https://github.com/charleswest775/MMM-Chladni),
 [MMM-SacredGeometry](https://github.com/charleswest775/MMM-SacredGeometry),
 [MMM-Tilings](https://github.com/charleswest775/MMM-Tilings),
 [MMM-PlanetsDance](https://github.com/charleswest775/MMM-PlanetsDance),
-[MMM-NightSky](https://github.com/charleswest775/MMM-NightSky) and
-[MMM-SnowCrystal](https://github.com/charleswest775/MMM-SnowCrystal).
+[MMM-Harmonograph](https://github.com/charleswest775/MMM-Harmonograph),
+[MMM-SnowCrystal](https://github.com/charleswest775/MMM-SnowCrystal) and
+[MMM-NightSky](https://github.com/charleswest775/MMM-NightSky).
